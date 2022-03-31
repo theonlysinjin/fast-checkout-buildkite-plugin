@@ -1,0 +1,15 @@
+name: Fast Checkout
+description: A Fast Checkout of a git repository 
+author: https://github.com/theonlysinjin
+requirements: []
+configuration:
+  properties:
+    depth:
+      default: 1
+      type: number
+    sparse:
+      default: ""
+      type: string
+    submodules:
+      default: false
+      type: boolean

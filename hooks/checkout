@@ -1,0 +1,45 @@
+#!/bin/bash
+set -eu
+echo "--- Fast Checkout"
+GITHUB_KEY=$(ssh-keyscan -H github.com)
+grep -qxF "$GITHUB_KEY" ~/.ssh/known_hosts || echo "$GITHUB_KEY" >> ~/.ssh/known_hosts
+
+# Setup
+SHALLOW_DEPTH=${BUILDKITE_PLUGIN_FAST_CHECKOUT_DEPTH}
+SPARSE_CHECKOUT=${BUILDKITE_PLUGIN_FAST_CHECKOUT_SPARSE}
+SUBMODULE_CLONE=${BUILDKITE_PLUGIN_FAST_CHECKOUT_SUBMODULES}
+
+echo "Working directory: $(pwd)"
+echo "Checkout path: ${BUILDKITE_BUILD_CHECKOUT_PATH}"
+echo "Shallow Clone Depth: ${SHALLOW_DEPTH}"
+echo "Shallow Clone Submodules: ${SUBMODULE_CLONE}"
+echo "Sparse Checkout Paths: ${SPARSE_CHECKOUT}"
+
+# Clean build every time
+cd ..
+rm -rf $BUILDKITE_PIPELINE_NAME
+
+## Do the shallow checkout if we should
+if [[ ${SHALLOW_DEPTH} -eq 0 ]]; then
+  git clone $BUILDKITE_REPO $BUILDKITE_PIPELINE_NAME #--no-checkout
+else
+  git clone --depth 0 $BUILDKITE_REPO $BUILDKITE_PIPELINE_NAME
+fi
+
+
+cd $BUILDKITE_PIPELINE_NAME
+
+if [[ ${SPARSE_CHECKOUT} ]]; then
+  git sparse-checkout init --cone
+  git sparse-checkout add $SPARSE_CHECKOUT
+  git checkout "$BUILDKITE_BRANCH"
+else
+  git clone --depth 0 $BUILDKITE_REPO $BUILDKITE_PIPELINE_NAME
+fi
+
+## Do the shallow checkout if we should
+if [[ ${SUBMODULE_CLONE} == "true" ]]; then
+  git submodule update --init --depth=1
+fi
+
+buildkite-agent annotate "Shallow Clone: ${SHALLOW_DEPTH} Shallow Submodules: ${SUBMODULE_CLONE} Sparse Checkout: ${SPARSE_CHECKOUT}"
